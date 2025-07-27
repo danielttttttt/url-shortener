@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../App';
 import { getUserLinks, deleteLink, type LinkData } from '../utils/database';
 import LinkCard from '../components/LinkCard';
 import Button from '../components/Button';
