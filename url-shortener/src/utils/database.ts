@@ -8,6 +8,7 @@ import {
   where,
   orderBy,
   updateDoc,
+  deleteDoc,
   increment,
   Timestamp
 } from 'firebase/firestore';
@@ -184,6 +185,40 @@ export const updateClickStats = async (
   } catch (error) {
     console.error('Error updating click stats:', error);
     throw new Error('Failed to update click statistics');
+  }
+};
+
+/**
+ * Deletes a link from the database
+ * @param linkId - The ID of the link document to delete
+ * @param userId - The user ID to verify ownership (optional security check)
+ * @returns Promise<void>
+ */
+export const deleteLink = async (linkId: string, userId?: string): Promise<void> => {
+  try {
+    // Optional: Verify ownership before deletion
+    if (userId) {
+      const linkRef = doc(db, LINKS_COLLECTION, linkId);
+      const linkDoc = await getDoc(linkRef);
+
+      if (!linkDoc.exists()) {
+        throw new Error('Link not found');
+      }
+
+      const linkData = linkDoc.data() as LinkData;
+      if (linkData.userId !== userId) {
+        throw new Error('Unauthorized: You can only delete your own links');
+      }
+    }
+
+    // Delete the document
+    const linkRef = doc(db, LINKS_COLLECTION, linkId);
+    await deleteDoc(linkRef);
+
+    console.log('Link deleted successfully:', linkId);
+  } catch (error) {
+    console.error('Error deleting link:', error);
+    throw new Error('Failed to delete link');
   }
 };
 

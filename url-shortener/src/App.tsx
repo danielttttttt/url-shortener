@@ -4,6 +4,7 @@ import LandingPage from './pages/LandingPage'
 import Login from './pages/Login'
 import SignUp from './pages/SignUp'
 import RedirectPage from './pages/RedirectPage'
+import Dashboard from './pages/Dashboard'
 import ErrorBoundary from './components/ErrorBoundary'
 import Navigation from './components/Navigation'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -56,12 +57,7 @@ function AppRoutes() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                    <div className="text-center">
-                      <h1 className="text-2xl font-bold text-gray-900 mb-4">Dashboard</h1>
-                      <p className="text-gray-600">Dashboard coming soon...</p>
-                    </div>
-                  </div>
+                  <Dashboard />
                 </ProtectedRoute>
               }
             />
