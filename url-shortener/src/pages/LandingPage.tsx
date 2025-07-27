@@ -10,6 +10,7 @@ const LandingPage = () => {
   const [result, setResult] = useState<ShortenUrlResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [copySuccess, setCopySuccess] = useState(false)
 
   const handleShorten = async () => {
     if (!url.trim()) return
@@ -17,6 +18,7 @@ const LandingPage = () => {
     setIsLoading(true)
     setError('')
     setResult(null)
+    setCopySuccess(false) // Reset copy success state
 
     try {
       let response: ShortenUrlResponse
@@ -53,10 +55,12 @@ const LandingPage = () => {
 
     try {
       await navigator.clipboard.writeText(result.data.shortUrl)
-      // You could add a toast notification here
-      console.log('URL copied to clipboard!')
+      setCopySuccess(true)
+      // Reset the success state after 2 seconds
+      setTimeout(() => setCopySuccess(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
+      // You could show an error message here if needed
     }
   }
 
@@ -139,41 +143,130 @@ const LandingPage = () => {
           {/* Result Section */}
           {result?.success && result.data && (
             <div className="bg-green-50 rounded-lg p-6 border-2 border-green-100">
-              <h3 className="text-lg font-semibold text-green-800 mb-3">
-                Your shortened URL:
-              </h3>
-              <div className="space-y-3">
-                {/* Short URL */}
-                <div className="flex flex-col sm:flex-row gap-3 items-center">
-                  <div className="flex-1 w-full">
-                    <input
-                      type="text"
-                      value={result.data.shortUrl}
-                      readOnly
-                      className="w-full px-4 py-3 bg-white border border-green-200 rounded-lg text-gray-700 font-mono text-sm"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleCopy}
-                    variant="outline"
-                    className="sm:w-auto w-full"
+              {/* Success Message */}
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="w-6 h-6 text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    Copy
-                  </Button>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-lg font-semibold text-green-800">
+                    ✅ Link created successfully!
+                  </h3>
+                  <p className="text-sm text-green-700">
+                    Your short URL is ready to share
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Short URL Display */}
+                <div className="bg-white rounded-lg p-4 border border-green-200">
+                  <div className="flex flex-col sm:flex-row gap-3 items-center">
+                    <div className="flex-1 w-full">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-600">Your short link:</span>
+                      </div>
+                      <a
+                        href={result.data.shortUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full px-3 py-2 mt-1 bg-gray-50 border border-gray-200 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-gray-100 font-mono text-sm transition-colors duration-200 break-all"
+                      >
+                        {result.data.shortUrl}
+                      </a>
+                    </div>
+                    <Button
+                      onClick={handleCopy}
+                      variant="outline"
+                      className={`sm:w-auto w-full transition-all duration-200 ${
+                        copySuccess
+                          ? 'bg-green-100 border-green-300 text-green-700'
+                          : 'hover:bg-green-50'
+                      }`}
+                    >
+                      {copySuccess ? (
+                        <div className="flex items-center">
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          Copied!
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                            />
+                          </svg>
+                          Copy
+                        </div>
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Original URL Display */}
-                <div className="text-sm text-green-700">
-                  <span className="font-medium">Original URL:</span>
-                  <div className="mt-1 p-2 bg-white rounded border border-green-200 break-all">
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div className="text-sm text-gray-600 mb-1">
+                    <span className="font-medium">Original URL:</span>
+                  </div>
+                  <div className="text-sm text-gray-700 break-all font-mono">
                     {result.data.originalUrl}
                   </div>
                 </div>
 
-                {/* Short Code Info */}
-                <div className="text-xs text-green-600">
-                  Short code: <span className="font-mono font-medium">{result.data.shortCode}</span>
-                  {currentUser ? ' • Saved to your account' : ' • Created anonymously'}
+                {/* Additional Info */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-green-600">
+                  <div>
+                    Short code: <span className="font-mono font-medium">{result.data.shortCode}</span>
+                  </div>
+                  <div className="flex items-center">
+                    {currentUser ? (
+                      <span className="flex items-center">
+                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                        Saved to your account
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        Created anonymously
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
