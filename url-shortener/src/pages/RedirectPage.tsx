@@ -95,7 +95,11 @@ const RedirectPage: React.FC = () => {
           {result.linkData && (
             <div className="text-xs text-gray-500 mb-4">
               <p>Short code: <span className="font-mono">{result.linkData.shortCode}</span></p>
-              <p>Total clicks: {result.linkData.clicks}</p>
+              <p>Total clicks: <span className="font-semibold text-green-600">{result.linkData.clicks}</span></p>
+              {result.linkData.lastClickedAt && (
+                <p>Last accessed: {result.linkData.lastClickedAt.toLocaleString()}</p>
+              )}
+              <p className="text-green-600 font-medium">✅ Click tracked successfully</p>
             </div>
           )}
           <p className="text-xs text-gray-500">
