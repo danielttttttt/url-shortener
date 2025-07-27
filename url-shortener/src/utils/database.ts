@@ -1,0 +1,241 @@
+import {
+  collection,
+  addDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  updateDoc,
+  increment,
+  Timestamp
+} from 'firebase/firestore';
+import { db } from '../firebase';
+
+export interface LinkData {
+  id?: string;
+  originalUrl: string;
+  shortCode: string;
+  createdAt: Timestamp;
+  clicks: number;
+  userId: string;
+}
+
+export interface CreateLinkData {
+  originalUrl: string;
+  shortCode: string;
+  userId: string;
+}
+
+export const LINKS_COLLECTION = 'links';
+
+/**
+ * Creates a new link document in the Firestore database
+ * @param linkData - The link data to create
+ * @returns Promise<string> - The ID of the created document
+ */
+export const createLink = async (linkData: CreateLinkData): Promise<string> => {
+  try {
+    // Prepare the document data with default values
+    const docData: Omit<LinkData, 'id'> = {
+      originalUrl: linkData.originalUrl,
+      shortCode: linkData.shortCode,
+      userId: linkData.userId,
+      createdAt: Timestamp.now(),
+      clicks: 0
+    };
+
+    // Add the document to the links collection
+    const docRef = await addDoc(collection(db, LINKS_COLLECTION), docData);
+    
+    console.log('Link created successfully with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating link:', error);
+    throw new Error('Failed to create link');
+  }
+};
+
+/**
+ * Retrieves a link by its short code
+ * @param shortCode - The short code to search for
+ * @returns Promise<LinkData | null> - The link data or null if not found
+ */
+export const getLinkByShortCode = async (shortCode: string): Promise<LinkData | null> => {
+  try {
+    const q = query(
+      collection(db, LINKS_COLLECTION),
+      where('shortCode', '==', shortCode)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const doc = querySnapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data()
+    } as LinkData;
+  } catch (error) {
+    console.error('Error getting link by short code:', error);
+    throw new Error('Failed to retrieve link');
+  }
+};
+
+/**
+ * Retrieves all links for a specific user
+ * @param userId - The user ID to filter by
+ * @returns Promise<LinkData[]> - Array of link data for the user
+ */
+export const getUserLinks = async (userId: string): Promise<LinkData[]> => {
+  try {
+    const q = query(
+      collection(db, LINKS_COLLECTION),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as LinkData));
+  } catch (error) {
+    console.error('Error getting user links:', error);
+    throw new Error('Failed to retrieve user links');
+  }
+};
+
+/**
+ * Increments the click count for a link
+ * @param linkId - The ID of the link document
+ * @returns Promise<void>
+ */
+export const incrementLinkClicks = async (linkId: string): Promise<void> => {
+  try {
+    const linkRef = doc(db, LINKS_COLLECTION, linkId);
+    await updateDoc(linkRef, {
+      clicks: increment(1)
+    });
+    
+    console.log('Link clicks incremented for ID:', linkId);
+  } catch (error) {
+    console.error('Error incrementing link clicks:', error);
+    throw new Error('Failed to update click count');
+  }
+};
+
+/**
+ * Checks if a short code already exists in the database
+ * @param shortCode - The short code to check
+ * @returns Promise<boolean> - True if the short code exists, false otherwise
+ */
+export const shortCodeExists = async (shortCode: string): Promise<boolean> => {
+  try {
+    const q = query(
+      collection(db, LINKS_COLLECTION),
+      where('shortCode', '==', shortCode)
+    );
+
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  } catch (error) {
+    console.error('Error checking short code existence:', error);
+    throw new Error('Failed to check short code availability');
+  }
+};
+
+/**
+ * Generates a random short code using alphanumeric characters [A-Za-z0-9]
+ * @param length - The length of the short code (default: 6)
+ * @param useNanoid - Whether to use nanoid library (default: false)
+ * @returns string - A random alphanumeric string
+ */
+export const generateRandomShortCode = (length: number = 6, useNanoid: boolean = false): string => {
+  if (useNanoid) {
+    const { nanoid, customAlphabet } = require('nanoid');
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const generateId = customAlphabet(alphabet, length);
+    return generateId();
+  } else {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+
+    return result;
+  }
+};
+
+/**
+ * Generates a unique short code by checking against existing codes in the database
+ * @param length - The length of the short code (default: 6)
+ * @param maxAttempts - Maximum number of attempts to generate a unique code (default: 10)
+ * @param useNanoid - Whether to use nanoid library for generation (default: false)
+ * @returns Promise<string> - A unique short code
+ */
+export const generateUniqueShortCode = async (
+  length: number = 6,
+  maxAttempts: number = 10,
+  useNanoid: boolean = false
+): Promise<string> => {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const shortCode = generateRandomShortCode(length, useNanoid);
+
+    try {
+      const exists = await shortCodeExists(shortCode);
+      if (!exists) {
+        return shortCode;
+      }
+    } catch (error) {
+      console.error(`Attempt ${attempt + 1} failed:`, error);
+      if (attempt === maxAttempts - 1) {
+        throw new Error('Failed to generate unique short code after maximum attempts');
+      }
+    }
+  }
+
+  throw new Error('Failed to generate unique short code');
+};
+
+/**
+ * Validates a custom short code format
+ * @param shortCode - The short code to validate
+ * @returns object - Validation result with isValid boolean and error message
+ */
+export const validateShortCode = (shortCode: string): { isValid: boolean; error?: string } => {
+  // Check if empty
+  if (!shortCode || shortCode.trim().length === 0) {
+    return { isValid: false, error: 'Short code cannot be empty' };
+  }
+
+  // Check length (3-20 characters)
+  if (shortCode.length < 3) {
+    return { isValid: false, error: 'Short code must be at least 3 characters long' };
+  }
+
+  if (shortCode.length > 20) {
+    return { isValid: false, error: 'Short code cannot be longer than 20 characters' };
+  }
+
+  // Check for valid characters (alphanumeric, hyphens, underscores)
+  const validPattern = /^[A-Za-z0-9_-]+$/;
+  if (!validPattern.test(shortCode)) {
+    return { isValid: false, error: 'Short code can only contain letters, numbers, hyphens, and underscores' };
+  }
+
+  // Check for reserved words
+  const reservedWords = ['admin', 'api', 'www', 'app', 'dashboard', 'login', 'signup', 'help', 'about', 'contact'];
+  if (reservedWords.includes(shortCode.toLowerCase())) {
+    return { isValid: false, error: 'This short code is reserved and cannot be used' };
+  }
+
+  return { isValid: true };
+};

@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Rules for the links collection
+    match /links/{linkId} {
+      // Allow read access to all authenticated users (for URL redirection)
+      allow read: if request.auth != null;
+      
+      // Allow create access to authenticated users for their own links
+      allow create: if request.auth != null 
+        && request.auth.uid == resource.data.userId
+        && validateLinkData(request.resource.data);
+      
+      // Allow update access only to the owner of the link (for click counting)
+      allow update: if request.auth != null 
+        && request.auth.uid == resource.data.userId
+        && onlyUpdatingClicks(request.resource.data, resource.data);
+      
+      // Allow delete access only to the owner of the link
+      allow delete: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+    }
+    
+    // Helper functions
+    function validateLinkData(data) {
+      return data.keys().hasAll(['originalUrl', 'shortCode', 'userId', 'createdAt', 'clicks'])
+        && data.originalUrl is string
+        && data.shortCode is string
+        && data.userId is string
+        && data.createdAt is timestamp
+        && data.clicks is number
+        && data.clicks == 0; // New links should start with 0 clicks
+    }
+    
+    function onlyUpdatingClicks(newData, oldData) {
+      return newData.diff(oldData).affectedKeys().hasOnly(['clicks'])
+        && newData.clicks >= oldData.clicks; // Clicks can only increase
+    }
+  }
+}
