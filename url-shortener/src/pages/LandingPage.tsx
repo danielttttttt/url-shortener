@@ -4,13 +4,16 @@ import { useAuth } from '../contexts/AuthContext'
 import { shortenUrl, shortenUrlAnonymous, type ShortenUrlResponse } from '../utils/urlShortener'
 
 const LandingPage = () => {
-  const { currentUser } = useAuth()
+  const { currentUser, error: authError } = useAuth()
   const [url, setUrl] = useState('')
   const [customShortCode, setCustomShortCode] = useState('')
   const [result, setResult] = useState<ShortenUrlResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [copySuccess, setCopySuccess] = useState(false)
+
+  // Check if Firebase is configured
+  const isFirebaseConfigured = !authError?.includes('Firebase configuration')
 
   const handleShorten = async () => {
     if (!url.trim()) return
@@ -21,6 +24,29 @@ const LandingPage = () => {
     setCopySuccess(false) // Reset copy success state
 
     try {
+      // If Firebase isn't configured, show a demo response
+      if (!isFirebaseConfigured) {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        const demoShortCode = customShortCode.trim() || Math.random().toString(36).substring(2, 8)
+        const demoResponse: ShortenUrlResponse = {
+          success: true,
+          data: {
+            id: 'demo-' + demoShortCode,
+            originalUrl: url.trim(),
+            shortCode: demoShortCode,
+            shortUrl: `${window.location.origin}/${demoShortCode}`,
+            createdAt: new Date(),
+          }
+        }
+
+        setResult(demoResponse)
+        setUrl('')
+        setCustomShortCode('')
+        return
+      }
+
       let response: ShortenUrlResponse
 
       if (currentUser) {
@@ -78,6 +104,30 @@ const LandingPage = () => {
               Transform long URLs into short, shareable links in seconds
             </p>
           </div>
+
+          {/* Firebase Configuration Banner */}
+          {!isFirebaseConfigured && (
+            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Demo Mode - Firebase Configuration Required
+                  </h3>
+                  <div className="mt-1 text-sm text-yellow-700">
+                    <p>Authentication and database features are disabled. To enable them:</p>
+                    <p className="mt-1">
+                      1. Create a Firebase project → 2. Enable Email/Password auth → 3. Update <code className="bg-yellow-100 px-1 rounded text-xs">src/firebase.ts</code>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* URL Input Section */}
           <div className="space-y-4 mb-8">
@@ -162,10 +212,13 @@ const LandingPage = () => {
                 </div>
                 <div className="ml-3">
                   <h3 className="text-lg font-semibold text-green-800">
-                    ✅ Link created successfully!
+                    ✅ Link created successfully!{!isFirebaseConfigured && ' (Demo Mode)'}
                   </h3>
                   <p className="text-sm text-green-700">
-                    Your short URL is ready to share
+                    {!isFirebaseConfigured
+                      ? 'This is a demo link - it won\'t redirect without Firebase configuration'
+                      : 'Your short URL is ready to share'
+                    }
                   </p>
                 </div>
               </div>

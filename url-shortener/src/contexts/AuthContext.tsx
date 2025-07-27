@@ -65,6 +65,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     console.log('AuthProvider useEffect running');
+
+    // Check if we're using demo Firebase config
+    const isDemoConfig = auth.app.options.apiKey === "demo-api-key";
+
+    if (isDemoConfig) {
+      console.warn('⚠️ Using demo Firebase configuration - authentication disabled');
+      setError('Firebase configuration required for authentication features.');
+      setCurrentUser(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         console.log('Auth state changed:', user);
@@ -93,31 +105,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loading
   };
 
-  // Show error state if Firebase configuration is invalid
+  // Don't block the app if Firebase isn't configured - just log the warning
   if (error && error.includes('Firebase configuration')) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">
-            Firebase Configuration Required
-          </h1>
-          <p className="text-gray-700 mb-4">
-            The app is working, but Firebase needs to be configured for authentication.
-          </p>
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
-            <h3 className="font-semibold text-yellow-800 mb-2">Next Steps:</h3>
-            <ol className="text-sm text-yellow-700 space-y-1">
-              <li>1. Create a Firebase project</li>
-              <li>2. Enable Email/Password authentication</li>
-              <li>3. Update src/firebase.ts with your config</li>
-            </ol>
-          </div>
-          <p className="text-xs text-gray-500">
-            See FIREBASE_SETUP.md for detailed instructions.
-          </p>
-        </div>
-      </div>
-    );
+    console.warn('⚠️ Firebase not configured - authentication features disabled');
   }
 
   return (
